@@ -1,0 +1,70 @@
+---
+title: "Final Project Data 607"
+author: "Evelyn Bartley and Dhanya Nair"
+date: "2024-04-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load Libraries
+```{r}
+library(tidyverse)
+
+```
+
+
+## Overview:
+
+This project is an exploratory analysis of electric vehicle sales and prices over time.
+
+
+## Historic Sales 
+
+This Kaggle dataset ("Historic sales of electric vehicles") is from the Global EV Outlook, an annual publication that identifies and discusses recent developments in electric mobility across the globe.
+
+```{r}
+#Read historic EV sales csv into R
+historic <- read.csv('https://raw.githubusercontent.com/evelynbartley/Final-Project-607/main/IEA-EV-dataEV%20salesCarsHistorical.csv', header = TRUE)
+tibble(historic)
+```
+*Exploration*
+
+I want to look at the number of electric vehicles sold in each country in the dataset.
+
+```{r}
+#sum counts by region
+region_counts <- historic %>% 
+  group_by(region) %>%
+  summarize(count = sum(value))
+
+#remove regions I don't want to look at
+region_counts2 <- region_counts[-c(9,36), ]
+```
+
+```{r}
+region_counts2 %>%
+  ggplot(aes(x = region, y = count)) + 
+  geom_col() + coord_flip()
+```
+
+China has sold the greatest number of electric vehicles of any region, almost two times more than Europe and nearly four times as many as the USA. This is probably due to the fact that China's population is much larger compared to any other region. European countries have purchased the second greatest number of electric vehicles. The USA has purchased the third greatest number of electric vehicles. 
+
+
+```{r}
+year_counts <- historic %>% 
+  group_by(year) %>%
+  summarize(count = sum(value))
+tibble(year_counts)
+```
+
+```{r}
+year_counts %>%
+  ggplot(aes(x = year, y = count)) + 
+  geom_col() + coord_flip()
+```
+Globally, the number of electric vehicles sold has increased every year since 2011.
+
+
