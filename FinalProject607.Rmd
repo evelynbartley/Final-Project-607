@@ -1,0 +1,32 @@
+---
+title: "Final Project Data 607"
+author: "Evelyn Bartley and Dhanya Nair"
+date: "2024-04-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load Libraries
+```{r}
+library(tidyverse)
+
+```
+
+
+## Overview:
+
+This project is an exploratory analysis of electric vehicle sales and prices over time.
+
+
+## Historic Sales 
+
+```{r}
+#Read historic EV sales csv into R
+historic <- read.csv('https://raw.githubusercontent.com/evelynbartley/Final-Project-607/main/IEA-EV-dataEV%20salesCarsHistorical.csv', header = TRUE)
+tibble(historic)
+```
+
+
