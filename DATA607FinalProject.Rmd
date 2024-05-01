@@ -26,10 +26,22 @@ knitr::opts_chunk$set(echo = TRUE,warning = FALSE,message = FALSE)
 ```{r, warn.conflicts = FALSE}
 library(tidyverse)
 library(pdftools)
+library(knitr)
+
+library(gifski)
+library(png)
+library(gganimate)
+
+library(stats)
+
+library(corrplot)
 ```
 ##  Data sources
+
 ### 1. Global Electric Vehicle Dataset (CSV Format)
+
 #### Data Gathering
+
 - Global Electric Vehicle Dataset ( data till 2022, projections for 2025, 2030)
 - File location: https://www.kaggle.com/datasets/padmapiyush/global-electric-vehicle-dataset-2023/data
 ```{r}
@@ -90,6 +102,8 @@ EV_Data |>
   ggplot( aes(x= year ,y = value , color = powertrain)) +
   geom_point(stat = "identity") +
   labs(title = "Battery Electric Vehicle vs Plugin Hybrid  Electric Vehicle", x= "Year" , y = "EV Sales")
+
+
     
 
 # Bar plot
@@ -139,14 +153,16 @@ ggplot(aes(x = year, y = value)) +
 
 - Popular countries to sell EV vehicles are China, India, USA, United Kingdom .
 
-- BEV powertrain/ Battery operated electric vehicle is becoming more and more popular every year.
+- BEV powertrain/ Battery operated electric vehicle is becoming more and more popular every year. It is highly sold than Plug-In Hybrid Electric Vehicle.
 
-- USA is projected to have huge stock of EV cars, however the EV public charging points are  relatively less. This may be a concern for consumers who prefer to have easily accessible charging points.
+- USA is projected to have huge stock of EV cars, however the EV public charging points are  relatively less.The availability of charging stations is hence a big issue. This may be a concern for consumers who prefer to have easily accessible charging points.Hence lower sales for EV cars.
 
 - Based on the bar plot, i see that the EV stock/ production is much more than the EV sales for each country. This may cause the Sale price to decrease due to unsold inventory. 
 
 
+
 ### 2. Tesla Production and sales (PDF Format)
+
 
 #### Data Gathering
 Gather Tesla Production and sales units for 2023 and 2024
@@ -193,27 +209,47 @@ Tesla_data <- df |>
   mutate ( type = paste(V2, " ", type))|>
   subset(select= -c(V1,V2,V10,YoY) )
 
+#transform to pivot longer
 Tesla_stats <- Tesla_data |>
   pivot_longer(
     cols = starts_with("Q"),
     names_to = "Time", 
     values_to = "Units",
-   values_drop_na = TRUE
-  )
+   values_drop_na = TRUE  
+  )  |>
+  mutate( time.val = Time )
 
+#remove the thousand separator and convert to numeric
+Tesla_stats$Units= as.numeric(gsub("," ,"",Tesla_stats$Units))
+
+#Update Time to a numeric format
+Tesla_stats <- Tesla_stats |>
+  separate_wider_delim(Time, delim = "_", names = c("Quarter", "Year.Quarter"),too_few = "align_start")
+Tesla_stats$Quarter= gsub("Q" ,"0",Tesla_stats$Quarter)
+
+Tesla_stats$Year.Quarter= as.numeric(paste0(Tesla_stats$Year.Quarter ,Tesla_stats$Quarter))
 ```
 
 
 #### Data Analysis
 ```{r}
 
-#visualise
-ggplot(Tesla_stats , aes(x= Time,y = Units, fill = type)) +
+#visualize
+ggplot(Tesla_stats , aes(x= time.val,y = Units, fill = type)) +
   geom_bar(stat = "identity", position = "dodge") +
     theme_minimal() +
   theme(legend.position = "bottom") +
   scale_fill_brewer(palette = "Set3") +
-  labs( title = "Tesla EV models - Production Vs Sales")
+  labs( title = "Tesla EV models - Production Vs Sales", x= "Year by Quarter")
+
+
+# Generate animation object and visualize
+animate <- ggplot(Tesla_stats, aes(x=factor(type), y=Units)) +
+  geom_boxplot() +
+  transition_states(Year.Quarter) +
+  labs(title = 'Time: {closest_state}', x = 'Productions and Deliveries', y = 'Units')
+
+animate
 
 
 ```
@@ -306,8 +342,8 @@ ev_brand_YOY$Brand <- factor(ev_brand_YOY$Brand, levels = ev_brand_YOY$Brand[ord
 
   
 #visualize segment share YTD
-  ggplot(ev_brand_YOY , aes(x= Brand,y = Segment_share)) +
-  geom_bar(stat = "identity", position = "dodge", fill = "blue") +
+  ggplot(ev_brand_YOY , aes(x= reorder(Brand,Segment_share),y = Segment_share)) +
+  geom_bar(stat = "identity", position = position_stack(reverse = TRUE),color = "black", fill = "green") +
   coord_flip() +
     labs ( title = "Segment share of brands in Sales of EV cars for 2023 and 2024" , 
            y = "Segment Share in %" , x = "Brand")
@@ -320,9 +356,49 @@ ev_brand_YOY$Brand <- factor(ev_brand_YOY$Brand, levels = ev_brand_YOY$Brand[ord
 - However, Tesla is still a leader in the EV segment with respect to overall sales.
 
 
-### feature not covered in class!
+### Feature not covered in class!
+ I would like to know the correlation between the variables to understand better the relationship between the variables.
 
+```{r}
+#filter to required parameters 
+EV_summary <- EV_Raw %>%
+  filter( category == "Historical") %>%
+  filter( powertrain != "PHEV" , powertrain != "Publicly available slow")  %>%
+  filter( region == "USA") %>%
+  select( region, parameter, year, value) %>%
+  mutate( value = as.numeric(value)) %>%
+  mutate( year = as.numeric(year))
+
+
+#pivot wider to get the numerical values to variables
+EV_summary_pivot  <- EV_summary |>
+  select(parameter, year, value) |>
+  pivot_wider(names_from = parameter, values_from = value) |>
+  rename( Electricity.demand.in.GWh  = "Electricity demand", 
+          Oil.displacement.in.Mlge = "Oil displacement, million lge",
+          EV.fast.charging.points = "EV charging points") |>
+  drop_na(EV.fast.charging.points)
+
+#Correlation Heatmap
+corrplot(cor(EV_summary_pivot), method = "color", 
+         type = "upper", # Show upper triangle
+         addCoef.col = "black", # Color of coefficients
+         tl.col = "black", # Color of text labels
+         tl.srt = 45, # Rotate text labels
+         title = "Correlation Heatmap of various EV parameters for USA ")
+
+
+```
+
+
+As seen above there is a strong correlation among most of the variables.
+
+Least correlation is between Year and Electricity demand.
+Less correlation is between Electricity demand and EV fast charging points.
+Most correlation is between Oil displacement and EV Stock, Sales, Stock share and Sales Share.
 
 
 
 ### Overall Conclusion
+
+
