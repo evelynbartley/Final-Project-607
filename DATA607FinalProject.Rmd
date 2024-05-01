@@ -3,39 +3,46 @@ title: "DATA607 Final Project"
 author: "Dhanya Nair"
 date: "2024-04-28"
 output:
-  html_document: default
-  pdf_document: default
-  toc: true
+  html_document:
+    toc: true
+    toc_depth : 5
+    toc_float: TRUE
+  
 ---
 
-## Topic for analysis:
+## Topic for analysis
 
-### Tesla has reduced the price of its Electric Vehicle(EV) models 3 times within a year .
+- Tesla has reduced the price of its Electric Vehicle(EV) models 3 times within a year .
 
-### The question we are seeking to answer is why is Tesla's EV sales and price declining though Sales were projected to grow by 30% in 2025. 
-### Possible reasons can be growing competitors, more incentives, more inventory, insufficient charging infrastructure. 
-### Benefit of doing this work is understanding the market conditions to make better decisions from the consumer side as well as from the auto industry side. 
+- The question we are seeking to answer is why is Tesla's EV sales and price declining though Sales were projected to grow by 30% in 2025. 
+- Possible reasons can be growing competitors, more incentives, more inventory, insufficient charging infrastructure. 
+- Benefit of doing this work is understanding the market conditions to make better decisions from the consumer side as well as from the auto industry side. 
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE,message = FALSE)
 ```
 
-## Load libraries:
-```{r,include=FALSE, warn.conflicts = FALSE}
+## Load libraries
+```{r, warn.conflicts = FALSE}
 library(tidyverse)
 library(pdftools)
 ```
-##  Data sources:
-### 1. CSV Format
-### Global Electric Vehicle Dataset ( data till 2022, projections for 2025, 2030)
-### File location: https://www.kaggle.com/datasets/padmapiyush/global-electric-vehicle-dataset-2023/data
+##  Data sources
+### 1. Global Electric Vehicle Dataset (CSV Format)
+#### Data Gathering
+- Global Electric Vehicle Dataset ( data till 2022, projections for 2025, 2030)
+- File location: https://www.kaggle.com/datasets/padmapiyush/global-electric-vehicle-dataset-2023/data
 ```{r}
-
-
 #Load the original .csv file from Global Electric Vehicle Dataset 2023
 #file location: https://www.kaggle.com/datasets/padmapiyush/global-electric-vehicle-dataset-2023/data
 
 EV_Raw <- read.csv("https://raw.githubusercontent.com/datanerddhanya/DATA607/main/finalproject/Global%20EV%202023.csv", header = TRUE)
 
+
+```
+
+#### Data Transformation 
+```{r}
 #filter to required parameters and mode as we do not need vans, buses and trucks
 EV_Data <- EV_Raw %>%
   filter( parameter == "EV sales" |parameter == "EV stock" | parameter == "EV charging points") %>%
@@ -57,6 +64,11 @@ filter( year > 2020) %>%
 subset(!(region %in% c('EU27', 'Europe', 'Other Europe', 'Rest of the world', 'World'))) %>%
   mutate( value = round(as.numeric(value))) %>%
   mutate( year = as.factor(as.numeric(year)))
+
+```
+
+#### Data Analysis 
+```{r}
 
 # to find the top countries of interest
 # i see that the following are the top countries in EV sales 
@@ -122,7 +134,8 @@ ggplot(aes(x = year, y = value)) +
 
 ```
 
-### Conclusion:
+
+#### Conclusion
 
 - Popular countries to sell EV vehicles are China, India, USA, United Kingdom .
 
@@ -133,9 +146,11 @@ ggplot(aes(x = year, y = value)) +
 - Based on the bar plot, i see that the EV stock/ production is much more than the EV sales for each country. This may cause the Sale price to decrease due to unsold inventory. 
 
 
-### 2. PDF Format
-### Gather Tesla Production and sales units for 2023 and 2024
-### File location: https://digitalassets.tesla.com/tesla-contents/image/upload/IR/TSLA-Q1-2024-Update.pdf
+### 2. Tesla Production and sales (PDF Format)
+
+#### Data Gathering
+Gather Tesla Production and sales units for 2023 and 2024
+File location: https://digitalassets.tesla.com/tesla-contents/image/upload/IR/TSLA-Q1-2024-Update.pdf
 
 ```{r}
 #read data from the pdf file
@@ -152,6 +167,11 @@ lines <- strsplit(page_text, "\n")[[1]]
 # Identify and extract the lines corresponding to the table
 # Adjust these indices based on where the table is located in the text
 table_lines <- lines[3:11]
+
+```
+
+#### Data Transformation 
+```{r}
 
 
 # Assuming the table is tabular, i can then further process the lines to create a data frame
@@ -181,6 +201,11 @@ Tesla_stats <- Tesla_data |>
    values_drop_na = TRUE
   )
 
+```
+
+
+#### Data Analysis
+```{r}
 
 #visualise
 ggplot(Tesla_stats , aes(x= Time,y = Units, fill = type)) +
@@ -191,16 +216,18 @@ ggplot(Tesla_stats , aes(x= Time,y = Units, fill = type)) +
   labs( title = "Tesla EV models - Production Vs Sales")
 
 
-
 ```
 
-### Conclusion
+
+
+#### Conclusion
 - As we can see in the bar chart there is drop in production and sales of Tesla cars in Q1 2024 compared to Q1 2023. 
 - This may have cause the price to reduce from Q3 2023, which caused a bit of sales increase in Q4 2023.
 
-### 3. PDF Format
-### Competitor Analysis
-### File location: https://www.coxautoinc.com/wp-content/uploads/2024/04/Q1-2024-Kelley-Blue-Book-Electric-Vehicle-Sales-Report.pdf
+### 3. Competitor Analysis (PDF Format)
+#### Data Gathering
+Competitor Analysis
+File location: https://www.coxautoinc.com/wp-content/uploads/2024/04/Q1-2024-Kelley-Blue-Book-Electric-Vehicle-Sales-Report.pdf
 
 ```{r}
 #read data from the pdf file
@@ -218,6 +245,11 @@ print(comp_lines)
 # Adjust these indices based on where the table is located in the text
 comp_table_lines <- comp_lines[4:31]
 
+
+```
+
+#### Data Transformation 
+```{r}
 
 # Assuming the table is tabular, i can then further process the lines to create a data frame
 # Define a regular expression for splitting by one or more spaces
@@ -250,6 +282,12 @@ ev_brand_YOY <- ev_brand_sales |>
   drop_na(YOY)
 
 
+```
+
+
+#### Data Analysis
+```{r}
+
 # Convert Brand to a factor and reorder based on YOY %
 # this is needed to sort the yoy% in order
 ev_brand_YOY$Brand <- factor(ev_brand_YOY$Brand, levels = ev_brand_YOY$Brand[order(-ev_brand_YOY$YOY)])
@@ -273,10 +311,18 @@ ev_brand_YOY$Brand <- factor(ev_brand_YOY$Brand, levels = ev_brand_YOY$Brand[ord
   coord_flip() +
     labs ( title = "Segment share of brands in Sales of EV cars for 2023 and 2024" , 
            y = "Segment Share in %" , x = "Brand")
+
 ```
 
-### Conclusion:
+
+#### Conclusion:
 - Based on the visualized plots,we can infer from the bar plot that the competition for the EV cars has significantly increased. Many brands have significantly invested in EV cars. Tesla YoY % is -13.3 % .This may have caused Tesla to reduce the sale price of its EV cars to compete with the growing competition. 
 - However, Tesla is still a leader in the EV segment with respect to overall sales.
 
 
+### feature not covered in class!
+
+
+
+
+### Overall Conclusion
