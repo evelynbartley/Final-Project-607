@@ -1,0 +1,305 @@
+---
+title: "Final Project Data 607"
+author: "Evelyn Bartley and Dhanya Nair"
+date: "2024-04-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE, message = FALSE)
+```
+
+Load Libraries
+```{r}
+library(tidyverse)
+library(ggplot2)
+```
+
+
+## Overview:
+
+This project is an exploratory analysis of electric vehicle sales and prices over time.
+
+
+## Historic Sales 
+
+This Kaggle dataset ("Historic sales of electric vehicles") is from the Global EV Outlook, an annual publication that identifies and discusses recent developments in electric mobility across the globe.
+
+```{r}
+#Read historic EV sales csv into R
+historic <- read.csv('https://raw.githubusercontent.com/evelynbartley/Final-Project-607/main/IEA-EV-dataEV%20salesCarsHistorical.csv', header = TRUE)
+tibble(historic)
+```
+*Exploration*
+
+I want to look at the number of electric vehicles sold in each country in the dataset.
+
+```{r}
+#sum counts by region
+region_counts <- historic %>% 
+  group_by(region) %>%
+  summarize(count = sum(value))
+
+#remove regions I don't want to look at
+region_counts2 <- region_counts[-c(9,36), ]
+```
+
+```{r}
+#plot region counts 
+region_counts2 %>%
+  ggplot(aes(x = region, y = count)) + 
+  geom_col(fill = "green") + coord_flip() + scale_y_continuous(labels = scales::comma) +
+  labs(title = "EV Sales by Region", x = "Region", y = "Count")
+```
+
+China has sold the greatest number of electric vehicles of any region, almost two times more than Europe and nearly four times as many as the USA. This is probably due to the fact that China's population is much larger compared to any other region. European countries have purchased the second greatest number of electric vehicles. The USA has purchased the third greatest number of electric vehicles. 
+
+
+```{r}
+#get sales counts by year
+year_counts <- historic %>% 
+  group_by(year) %>%
+  summarize(count = sum(value))
+tibble(year_counts)
+```
+
+```{r}
+year_counts %>%
+  ggplot(aes(x = year, y = count)) + 
+  geom_col(fill = "green") + 
+  scale_y_continuous(labels = scales::comma) + labs(title = "Global EV Sales 2011-2022", x = "Year", y = "Cars")
+```
+Globally, the number of electric vehicles sold has increased every year since 2011.
+
+```{r}
+#filter historic data for only US data
+USdata <- historic %>%
+  filter(historic$region == "USA")
+
+#plot the trend for US EV sales
+USdata %>% ggplot(aes(x = year, y = value)) + 
+  geom_col(fill = "green") + scale_y_continuous(labels = scales::comma) + 
+  labs(title = "US EV Sales 2011-2022", x = "Year", y = "Cars")
+```
+
+The US has closely followed the global trend for EV sales. There was a tiny dip in EV sales in 2015 and a larger dip in 2019 and 2020. EV sales about doubled from 2020 to 2021.
+
+Lets look at BEV vs PHEV sales for the US. BEVs are battery electric vehicles and PHEVs are plug-in hybrid electric vehicles. BEVs run on electricity alone, so they don't require gasoline like PHEVs do.
+
+```{r}
+historic %>%
+  ggplot(aes(x = year, y = value, fill = powertrain)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(title = "Global BEV vs PHEV Sales 2011-2022" , x = "Year", y = "Cars")
+```
+As EV sales have increased over time, the difference in BEV vs PHEV sales has also increased.
+
+```{r}
+USdata %>%
+  ggplot(aes(x = year, y = value, fill = powertrain)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(title = "USA BEV vs PHEV Sales 2011-2022" , x = "Year", y = "Cars")
+```
+In the US, BEV and PHEV sales were steadily growing since 2011. PHEV sales reached a peak in 2018 and then started declining until 2021 where they doubled in sales. BEV sales reached a plateau from 2018-2020 and then spiked in 2021 and 2022. The fluctuation of EV sales in the US from 2011-2022 may indicate that it is normal for the EV market to experience fluctuation and this could be why Tesla has experienced a decline in sales in the past year.
+
+## Satistical Inference
+
+I want to analyze production and sales for Tesla in 2023 and the first quarter of 2024.
+
+Gather Tesla Production and sales units for 2023 and 2024
+File location: https://digitalassets.tesla.com/tesla-contents/image/upload/IR/TSLA-Q1-2024-Update.pdf
+The nest two code chunks are copied from Dhanya's portion of the final project so that I am able to work with that dataset she tidied.
+
+```{r}
+library(pdftools)
+
+#read data from the pdf file
+pdf_text <- pdf_text("https://digitalassets.tesla.com/tesla-contents/image/upload/IR/TSLA-Q1-2024-Update.pdf")
+
+# Extract text from the 6th page
+page_text <- pdf_text("https://digitalassets.tesla.com/tesla-contents/image/upload/IR/TSLA-Q1-2024-Update.pdf")[6]
+
+
+# Split the text into lines
+lines <- strsplit(page_text, "\n")[[1]]
+
+
+# Identify and extract the lines corresponding to the table
+# Adjust these indices based on where the table is located in the text
+table_lines <- lines[3:11]
+
+```
+
+#### Data Transformation 
+```{r}
+
+
+# Assuming the table is tabular, i can then further process the lines to create a data frame
+# Define a regular expression for splitting by one or more spaces
+split_regex <- "\\s+"
+# Split each line by the regular expression
+table_data <- lapply(table_lines, function(line) strsplit(line, split_regex )[[1]])
+
+# Convert the list to a data frame
+df <- as.data.frame(do.call(rbind, table_data))
+
+# filter only required observations
+# rename columns
+# concatenate two variables into one
+# remove the unwanted columns
+Tesla_data <- df |>
+  filter(V2 == "Total") |>
+  rename ( type = "V3", Q1_2023 = "V4" , Q2_2023 = "V5", Q3_2023 = "V6", Q4_2023 = "V7", Q1_2024 ="V8", YoY = "V9")  |>
+  mutate ( type = paste(V2, " ", type))|>
+  subset(select= -c(V1,V2,V10,YoY) )
+
+#transform to pivot longer
+Tesla_stats <- Tesla_data |>
+  pivot_longer(
+    cols = starts_with("Q"),
+    names_to = "Time", 
+    values_to = "Units",
+   values_drop_na = TRUE  
+  )  |>
+  mutate( time.val = Time )
+
+#remove the thousand separator and convert to numeric
+Tesla_stats$Units= as.numeric(gsub("," ,"",Tesla_stats$Units))
+
+#Update Time to a numeric format
+Tesla_stats <- Tesla_stats |>
+  separate_wider_delim(Time, delim = "_", names = c("Quarter", "Year.Quarter"),too_few = "align_start")
+Tesla_stats$Quarter= gsub("Q" ,"0",Tesla_stats$Quarter)
+
+Tesla_stats$Year.Quarter= as.numeric(paste0(Tesla_stats$Year.Quarter ,Tesla_stats$Quarter))
+
+tibble(Tesla_stats)
+```
+I am going to use the infer package to perform a correlation test for total production and deliveries of Tesla vehicles for 2023 and 2024. I also want to calculate surplus since it will give us more information on why Tesla has decreased price and may confirm that Tesla sales have been declining.
+
+```{r}
+library(infer)
+```
+
+```{r}
+#I want to isolate the year variable
+Tesla_stats$Year.Quarter = substr(Tesla_stats$Year.Quarter, 1, nchar(Tesla_stats$Year.Quarter)-2)
+
+# rename year column
+Tesla2 <- rename(Tesla_stats, Year = Year.Quarter)
+
+#make table longer so I can calculate surplus
+Tesla3 <- Tesla2 %>%
+  pivot_wider(names_from = type, values_from = Units) 
+
+# I was having a hard time calculating surplus column with mutate so I did it manually
+Tsurplus <- c(17933, 13560, -4571, 10482, 46561)
+
+#add Tsurplus to Tesla3 and save a new df
+Tesla4 <- Tesla3 %>% mutate(surplus = Tsurplus)
+
+tibble(Tesla4)
+```
+It looks like 2024 Q1 has the highest surplus. This indicates that Tesla has had the most difficulty in 2024 when trying the sell the product that they produce. Considering that total production is low in Q1 of 2024 as well, they are also not producing and selling as much as they did in 2023.
+
+I am interested in the relationship between total production and total deliveries. If Tesla is doing well as a business, ideally their total production will have a positive linear relationship with total deliveries. I will conduct a Pearson correlation test for the two variables.
+
+```{r}
+#Pearson correlation test between total production and total deliveries
+cor.test(Tesla4$`Total   production`,Tesla4$`Total   deliveries`, method = "pearson")
+```
+The correlation coefficient returned is 0.8779478, which is relatively close to 1 and indicates there is a strong positive correlation. 
+The confidence interval contains zero, so there is a chance that the true correlation coefficient is zero.
+The Pearson correlation test returned a p-value of 0.05024 which would not be statistically significant at a significance level of 0.05. I fail to conclude that production and deliveries are significantly correlated.
+
+
+## Web Scraping
+
+```{r}
+library(rvest)
+library(xml2)
+```
+
+I am going to web scrape the EV Charging Station Counts by State table from 'https://www.cnet.com/roadshow/news/how-many-ev-charging-stations-are-there-in-the-us/' that contains the number of public charging stations per state.
+
+```{r}
+#save link in a variable
+link <- "https://www.cnet.com/roadshow/news/how-many-ev-charging-stations-are-there-in-the-us/"
+
+#read html and save it in variable
+page <- read_html(link)
+```
+
+
+```{r}
+#retrieve html elements 
+# I used Selector Gadget to help me get the css selector!
+html_data <- page %>%
+  html_elements(css = "td , .c-shortcodeChart_chart_hasBg")
+
+head(html_data)
+```
+
+
+```{r}
+#retrieve text from html element
+stations <- xml_text(html_data)
+```
+
+
+```{r}
+#remove first two items because they are column names
+stations2 <- stations[-c(1:2)]
+```
+
+
+```{r}
+#turn html text into a dataframe by first converting it into a matrix
+stationsdf <- as.data.frame(matrix(stations2, ncol = 2, byrow = TRUE)) %>%
+  select("State" = V1, "Stations" = V2)
+#remove commas from numbers and convert to numeric
+stationsdf$Stations <- as.numeric(gsub(",","", stationsdf$Stations))
+tibble(stationsdf)
+```
+
+```{r}
+stationsdf %>% ggplot(aes(x = State, y = Stations)) + 
+  geom_col(fill = "green") + coord_flip() +
+  labs(title = "Public EV Charging Stations by State")
+```
+
+
+
+## Statistical Analysis
+
+I want to do statistical analysis on the Number of Public Charging Stations per State in March 2023.
+```{r}
+#Find avg number of public charging stations in a state
+mean(stationsdf$Stations)
+```
+On average, there are about 1,004 public charging stations in a US State.
+
+
+```{r}
+#maximum
+max(stationsdf$Stations)
+print(stationsdf$State[which.max(stationsdf$Stations)])
+#minimum
+min(stationsdf$Stations)
+print(stationsdf$State[which.min(stationsdf$Stations)])
+
+```
+The state with the greatest number of public charging stations is California.
+The state with the least number of public charging stations is Alaska.
+
+```{r}
+#boxplot of the distribution of charging stations
+stationsdf %>% 
+  ggplot(aes(x = Stations)) + geom_boxplot() + 
+  xlab('Distribution of Public EV Charging Stations in the US')
+```
+
+## Conclusions:
+From 2011-2022, Global EV sales have shown exponential growth. The US follows this same trend. Recently, the EV giant, Tesla, has failed to sell as many electric vehicles as it has been producing. This may be why Tesla has reduced its prices in the recent past. Another factor in the decline of EV sales may be the number of public charging stations. There are large differences in the number of public charging stations from state to state in the US. At the time of the study, California had the most at 14,040 while Alaska only had 59. The unreliability non-uniform spread of public charging stations in the US may also be contributing to the decline in electric vehicle sales.
