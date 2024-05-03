@@ -287,7 +287,7 @@ comp_table_lines <- comp_lines[4:31]
 #### Data Transformation 
 ```{r}
 
-# Assuming the table is tabular, i can then further process the lines to create a data frame
+# Assuming the table is tabular, we can then further process the lines to create a data frame
 # Define a regular expression for splitting by one or more spaces
 split_regex <- "\\s+"
 # Split each line by the regular expression
@@ -356,6 +356,52 @@ ev_brand_YOY$Brand <- factor(ev_brand_YOY$Brand, levels = ev_brand_YOY$Brand[ord
 - However, Tesla is still a leader in the EV segment with respect to overall sales.
 
 
+### Statistical Analysis
+
+Performing a T-test to compare EV sales or production between two countries group : UK and Germany
+
+```{r}
+
+EV_Stats <- EV_Raw %>%
+  filter( category == "Historical") %>%
+  filter( powertrain != "PHEV" , powertrain != "Publicly available slow")  %>%
+  filter( mode =="Cars" | mode == "EV") |>
+  select( region, parameter, year, value) %>%
+  mutate( value = as.numeric(value)) %>%
+  mutate( year = as.numeric(year))
+
+
+#pivot wider to get the numerical values to variables
+EV_Stats_summary  <- EV_Stats |>
+  pivot_wider(names_from = parameter, values_from = value) |>
+  rename( Electricity.demand.in.GWh  = "Electricity demand", 
+          Oil.displacement.in.Mlge = "Oil displacement, million lge",
+          EV.fast.charging.points = "EV charging points",
+          EV.sales = "EV sales" ,
+          EV.stock = "EV stock") |>
+  drop_na(EV.fast.charging.points)
+
+# Subset data for two countries
+UK_data <- subset(EV_Stats_summary, region == "United Kingdom")
+Germany_data <- subset(EV_Stats_summary, region == "Germany")
+
+# Perform T-test for EV sales between two countries
+sales_t_test <- t.test(UK_data$EV.sales, Germany_data$EV.sales)
+
+# Performing T-test for EV production between two countries
+production_t_test <- t.test(UK_data$EV.stock, Germany_data$EV.stock)
+
+# Print results
+print("T-test results for EV sales in 2 countries(UK and Germany):")
+print(sales_t_test)
+print("")
+
+print("T-test results for EV production in 2 countries(UK and Germany):")
+print(production_t_test)
+
+```
+Since the p-value (0.4197) is greater than the commonly used significance level of 0.05, we fail to reject the null hypothesis. This suggests that there is not enough evidence to conclude that there is a statistically significant difference in mean EV sales between the UK and Germany at the 5% significance level. 
+
 ### Feature not covered in class!
  I would like to know the correlation between the variables to understand better the relationship between the variables.
 
@@ -395,10 +441,30 @@ As seen above there is a strong correlation among most of the variables.
 
 Least correlation is between Year and Electricity demand.
 Less correlation is between Electricity demand and EV fast charging points.
-Most correlation is between Oil displacement and EV Stock, Sales, Stock share and Sales Share.
+Most correlation is between Oil displacement and EV Stock, Sales, Stock share and Sales Share. 
+Also there is strong correlation among EV fast charging points and EV Stock and sales.
 
 
 
 ### Overall Conclusion
 
+- Popular countries to sell EV vehicles are China, India, USA, United Kingdom .
+
+- BEV powertrain/ Battery operated electric vehicle is becoming more and more popular every year. It is highly sold than Plug-In Hybrid Electric Vehicle.
+
+- USA is projected to have huge stock of EV cars, however the EV public charging points are  relatively less.The availability of charging stations is hence a big issue. This may be a concern for consumers who prefer to have easily accessible charging points.Hence causing lower sales for EV cars.
+
+- Based on the bar plot, i see that the EV stock/ production is much more than the EV sales for each country. This may cause the Sale price to decrease due to unsold inventory. 
+
+
+- As we can see in the bar chart there is drop in production and sales of Tesla cars in Q1 2024 compared to Q1 2023. 
+
+- This may have cause the price to reduce from Q3 2023, which caused a bit of sales increase in Q4 2023.
+- Based on the visualized plots,we can infer from the bar plot that the competition for the EV cars has significantly increased. 
+- Many brands have significantly invested in EV cars. Tesla YoY % is -13.3 % .This may have caused Tesla to reduce the sale price of its EV cars to compete with the growing competition. 
+- However, Tesla is still a leader in the EV segment with respect to overall sales.
+
+- Performing a T-test to compare EV sales or production between two countries group : UK and Germany, is not enough evidence to conclude that there is a statistically significant difference in mean EV sales between the UK and Germany at the 5% significance level. 
+- Among the most variables considered in Correlation analysis,we see that the most correlation is between Oil displacement and EV Stock, Sales, Stock share and Sales Share.
+This can be agreed as EV cars are displacing almost 1.8 million barrels of oil a day in 2022.
 
